@@ -332,7 +332,11 @@ local my_gui = flow.make_gui(function(player, ctx)
 					ctx.popup_back = "ban"
 					return true
 				end
-				if ban_dur == 0 then ban_dur = nil end
+				if ban_dur == 0 then
+					an_dur = nil
+				else
+					ban_dur = os.time() + ban_dur
+				end
 				local ban_reason = form.xban_reason
 				if not ban_reason or ban_reason == "" then
 					ctx.popup = S("No Ban Reason!")

@@ -1,0 +1,50 @@
+# textdomain: usermgr
+
+### init.lua ###
+Admin=
+This is a bug.=
+Back=
+Not allowed to do this!=
+Online=
+Offline=
+Banned=
+Player Management System: Software Information=
+Author: @1=
+Source Code: @1=
+License: MIT License=
+No player selected.=
+Player: @1 (@2)=
+Singleplayer=
+Privs: @1 (@2)=
+Privs: @1=
+Manage=
+Kick=
+Ban=
+Unban=
+Player Management System: Players List=
+Info=
+Copyright (c) 2022 Emoji=
+Exit=
+Player Management System: Privilege -> @1=
+Apply=
+Discard=
+You cannot ban singleplayer!=
+You don't want to ban yourself, right?=
+Invalid Ban Duration!=
+No Ban Reason!=
+Player Management System: Ban -> @1=
+Ban Duration, in second (0 @= Infinity)=
+Ban Reason (Required)=
+Do you really want to ban @1?=
+Player Management System: Unban -> @1=
+Do you really want to unban @1?=
+Player Management System: Kick -> @1=
+Kick Reason (Optional)=
+Player Management System: New Player=
+Username=
+Password (Empty to clear)=
+You cannot delete yourself!=
+Player Management System: Delete Player -> @1=
+Do you really want to delete @1?=
+Unknown Tab!=
+GUI to manage players=
