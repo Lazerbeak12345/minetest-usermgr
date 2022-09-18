@@ -58,6 +58,7 @@ local NA = popup(S("Not allowed to do this!"))
 
 local pstatus = {
 	online  = minetest.colorize("#7aeb7a",S("Online")),
+	afk     = minetest.colorize("#eec61f",S("AFK")),
 	offline = S("Offline"),
 	ban     = minetest.colorize("#e76464",S("Banned")),
 	you     = minetest.colorize("#7aeb7a",S("You")),
@@ -68,6 +69,12 @@ local function get_pstatus(player,ctx)
 	if player:get_player_name() == pname then
 		return pstatus.you
 	elseif minetest.get_player_ip(pname) then -- Only return non-nil if the player is online
+		if rawget(_G,"afk_indicator") then
+			local AFK_TIME = (tonumber(minetest.settings:get("afkkick.max_inactive_time")) or 300) / 2
+			if afk_indicator.get(pname) > AFK_TIME then
+				return pstatus.afk
+			end
+		end
 		return pstatus.online
 	end
 	local banned = false
