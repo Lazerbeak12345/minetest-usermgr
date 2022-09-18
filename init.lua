@@ -88,8 +88,8 @@ local info = function () return gui.VBox {
 	gui.Label { label = S("Player Management System: Software Information") },
 	gui.ScrollableVBox {
 		name = "info_svbox",
-		h = 6,
-		w = 8,
+		h = 8,
+		min_w = 8,
 
 		gui.Label { label = S("Author: @1","Emoji (https://github.com/Emojigit)") },
 		gui.Label { label = S("Source Code: @1","https://github.com/C-C-Minetest-Server/usermgr") },
@@ -126,18 +126,25 @@ OR OTHER DEALINGS IN THE SOFTWARE.]] },
 
 local my_gui = flow.make_gui(function(player, ctx)
 	local form = ctx.form or {}
+	local name = player:get_player_name()
+	local privs = minetest.get_player_privs(name)
+	local manageall_priv = (privs.basic_privs or privs.privs or privs.server)
 
 	ctx.tab = ctx.tab or "main"
 	if not ctx.players or ctx.rebuild_player then
 		ctx.rebuild_player = nil
-		ctx.players = {}
-		local auth = minetest.get_auth_handler()
-		for x,y in auth.iterate() do
-			if y then
-				table.insert(ctx.players,x)
+		if manageall_priv then
+			ctx.players = {}
+			local auth = minetest.get_auth_handler()
+			for x,y in auth.iterate() do
+				if y then
+					table.insert(ctx.players,x)
+				end
 			end
+			table.sort(ctx.players)
+		else -- without `basic_privs` players can only view themself
+			ctx.players = {name}
 		end
-		table.sort(ctx.players)
 	end
 
 	if ctx.tab ~= "privs" then
@@ -155,12 +162,13 @@ local my_gui = flow.make_gui(function(player, ctx)
 		return popup(m_popup,m_back)
 	elseif ctx.tab == "main" then
 		local right = gui.Label { label = S("No player selected."), w = 7 }
+		if not privs.basic_privs then
+			form.player = 1
+		end
 		if form.player then
 			ctx.player = ctx.players[form.player]
 			if ctx.player then
-				local name = player:get_player_name()
 				local pprivs = minetest.get_player_privs(ctx.player)
-				local privs = minetest.get_player_privs(name)
 				local pobj = minetest.get_player_by_name(ctx.player)
 				local elems = {}
 				table.insert(elems,gui.Label { label = S("Player: @1 (@2)",ctx.player,get_pstatus(player,ctx)) })
@@ -254,6 +262,25 @@ local my_gui = flow.make_gui(function(player, ctx)
 				right = gui.VBox(elems)
 			end
 		end
+		local rb = {}
+		table.insert(rb,gui.Label { label = S("Copyright (c) 2022 Emoji") })
+		if manageall_priv then
+			table.insert(rb,gui.Button { label = S("Rebuild\nPlayer List"), expand = true, align_h = "right", on_event = function(player,ctx)
+				ctx.rebuild_player = true
+				return true
+			end})
+			table.insert(rb,gui.Button_exit { label = S("Exit") })
+		else
+			table.insert(rb,gui.Button_exit { label = S("Exit"), expand = true, align_h = "right" })
+		end
+		rb.expand = true
+		rb.align_v = "bottom"
+		lb = {}
+		if privs.server then
+			table.insert(lb,gui.Button { name = "tab_newplayer", label = "+", on_event = btn_event("newplayer"), w = 0.7, h = 0.7 })
+			table.insert(lb,gui.Button { name = "tab_delplayer", label = "-", on_event = btn_event("delplayer"), w = 0.7, h = 0.7 })
+		end
+		table.insert(lb,gui.Button { name = "tab_info", label = S("Info"), on_event = btn_event("info"), expand = true, align_h = "right", w = 1, h = 0.7})
 		return gui.VBox {
 			gui.Label { label = S("Player Management System: Players List") },
 			gui.HBox {
@@ -262,27 +289,15 @@ local my_gui = flow.make_gui(function(player, ctx)
 						h = 6,
 						w = 4,
 						name = "player",
-						on_event = function() return true end,
+						on_event = function() return privs.basic_privs end, -- Only return true if have basic_privs to lower workload
 						listelems = ctx.players,
+						selected_idx = not privs.basic_privs and 1
 					},
-					gui.HBox {
-						gui.Button { name = "tab_newplayer", label = "+", on_event = btn_event("newplayer"), w = 0.7, h = 0.7 },
-						gui.Button { name = "tab_delplayer", label = "-", on_event = btn_event("delplayer"), w = 0.7, h = 0.7 },
-						gui.Button { name = "tab_info", label = S("Info"), on_event = btn_event("info"), expand = true, align_h = "right", w = 1, h = 0.7},
-					}
+					gui.HBox(lb)
 				},
 				gui.VBox {
 					right,
-					gui.HBox {
-						gui.Label { label = S("Copyright (c) 2022 Emoji") },
-						gui.Button { label = S("Rebuild\nPlayer List"), expand = true, align_h = "right", on_event = function(player,ctx)
-							ctx.rebuild_player = true
-							return true
-						end},
-						gui.Button_exit { label = S("Exit") },
-						expand = true,
-						align_v = "bottom"
-					}
+					gui.HBox(rb)
 				},
 			}
 		}
