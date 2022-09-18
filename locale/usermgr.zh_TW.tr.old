@@ -1,0 +1,50 @@
+# textdomain: usermgr
+
+### init.lua ###
+Admin=管理員
+This is a bug.=這是一個臭蟲。
+Back=返回
+Not allowed to do this!=缺少權限！
+Online=在線
+Offline=離線
+Banned=被封禁
+Player Management System: Software Information=玩家管理系統：軟件資訊
+Author: @1=作者：@1
+Source Code: @1=源代碼：@1
+License: MIT License=授權：MIT授權條款
+No player selected.=未選擇玩家。
+Player: @1 (@2)=玩家：@1 (@2)
+Singleplayer=單人遊戲
+Privs: @1 (@2)=權限：@1 (@2)
+Privs: @1=權限：@1
+Manage=管理
+Kick=踢出
+Ban=封禁
+Unban=解除封禁
+Player Management System: Players List=玩家管理系統：玩家列表
+Info=資訊
+Copyright (c) 2022 Emoji=
+Exit=離開
+Player Management System: Privilege -> @1=玩家管理系統：權限 -> @1
+Apply=應用
+Discard=取消
+You cannot ban singleplayer!=無法封禁單人遊戲玩家！
+You don't want to ban yourself, right?=你不想封禁自己，對吧？
+Invalid Ban Duration!=無效封禁時長！
+No Ban Reason!=未提供封禁原因！
+Player Management System: Ban -> @1=玩家管理系統：封禁 -> @1
+Ban Duration, in second (0 @= Infinity)=以秒計的封禁時長 (0 @= 永久封禁)
+Ban Reason (Required)=封禁原因 (必填)
+Do you really want to ban @1?=你是否真的想封禁@1？
+Player Management System: Unban -> @1=玩家管理系統：解除封禁 -> @1
+Do you really want to unban @1?=你是否真的想解除封禁@1？
+Player Management System: Kick -> @1=玩家管理系統：踢出 -> @1
+Kick Reason (Optional)=踢出原因 (可選)
+Player Management System: New Player=玩家管理系統：新玩家
+Username=用戶名
+Password (Empty to clear)=密碼 (空白值以清空)
+You cannot delete yourself!=你不可以移除自己！
+Player Management System: Delete Player -> @1=玩家管理系統：移除玩家 -> @1
+Do you really want to delete @1?=你是否真的想移除@1？
+Unknown Tab!=未定義分頁！
+GUI to manage players=玩家管理圖形界面

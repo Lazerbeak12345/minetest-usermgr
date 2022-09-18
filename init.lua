@@ -60,10 +60,14 @@ local pstatus = {
 	online  = minetest.colorize("#7aeb7a",S("Online")),
 	offline = S("Offline"),
 	ban     = minetest.colorize("#e76464",S("Banned")),
+	you     = minetest.colorize("#7aeb7a",S("You")),
 }
 
-local function get_pstatus(pname)
-	if minetest.get_player_ip(pname) then -- Only return non-nil if the player is online
+local function get_pstatus(player,ctx)
+	local pname = ctx.player
+	if player:get_player_name() == pname then
+		return pstatus.you
+	elseif minetest.get_player_ip(pname) then -- Only return non-nil if the player is online
 		return pstatus.online
 	end
 	local banned = false
@@ -139,6 +143,9 @@ local my_gui = flow.make_gui(function(player, ctx)
 	if ctx.tab ~= "privs" then
 		ctx.privs = nil
 	end
+	if ctx.tab ~= "ctf_team" then
+		ctx.ctf_team = nil
+	end
 
 	if ctx.popup then
 		local m_popup = ctx.popup
@@ -147,14 +154,16 @@ local my_gui = flow.make_gui(function(player, ctx)
 		ctx.popup_back = nil
 		return popup(m_popup,m_back)
 	elseif ctx.tab == "main" then
-		local right = gui.Label { label = S("No player selected."), w = 7, align_h = "centre" }
+		local right = gui.Label { label = S("No player selected."), w = 7 }
 		if form.player then
 			ctx.player = ctx.players[form.player]
 			if ctx.player then
+				local name = player:get_player_name()
 				local pprivs = minetest.get_player_privs(ctx.player)
-				local privs = minetest.get_player_privs(player:get_player_name())
+				local privs = minetest.get_player_privs(name)
+				local pobj = minetest.get_player_by_name(ctx.player)
 				local elems = {}
-				table.insert(elems,gui.Label { label = S("Player: @1 (@2)",ctx.player,get_pstatus(ctx.player)) })
+				table.insert(elems,gui.Label { label = S("Player: @1 (@2)",ctx.player,get_pstatus(player,ctx)) })
 				do -- Privs
 					local boxelem = {}
 					local role = nil
@@ -174,12 +183,44 @@ local my_gui = flow.make_gui(function(player, ctx)
 						table.insert(boxelem,gui.Label { label = S("Privs: @1",len(pprivs)) })
 					end
 					if privs.privs then
-						table.insert(boxelem,gui.Spacer{})
-						table.insert(boxelem,gui.Button { name = "tab_privs", label = S("Manage"), on_event = btn_event("privs"), })
+						table.insert(boxelem,gui.Button { name = "tab_privs", label = S("Manage"), on_event = btn_event("privs"), expand = true, align_h = "right" })
 					end
 					table.insert(elems,gui.HBox(boxelem))
 				end
-				local pobj = minetest.get_player_by_name(ctx.player)
+				if pobj and minetest.settings:get_bool("enable_damage",false) then -- HP Management
+					local boxelem = {}
+					table.insert(boxelem,gui.Label { label = S("HP: @1",pobj:get_hp()) })
+					-- Explain the logic:
+					-- 1. Players with `server` priv can manage player HP freely.
+					-- 2. Otherwise, under the following conditions, players can suicide:
+					---- 1. In Exile game (just like `/restart` command), or
+					---- 2. When game or mods registered `/killme` command.
+					if privs.server or (name == ctx.player and (minetest.registered_chatcommands.killme or minetest.get_modpath("lore"))) then
+						table.insert(boxelem,gui.Button { name = "hp_kill", label = (name == ctx.player and S("Suicide") or S("Kill")), expand = true, align_h = "right",on_event = function(player,ctx)
+							local privs = minetest.get_player_privs(player:get_player_name())
+							if not (privs.server or (name == ctx.player and (minetest.registered_chatcommands.killme or minetest.get_modpath("lore")))) then
+								return NA
+							end
+							local pobj = minetest.get_player_by_name(ctx.player)
+							if pobj then
+								if minetest.get_modpath("lore") then -- Exile
+									local pinv = pobj:get_inventory()
+									for _, list_name in ipairs({'main','craft','cloths'}) do
+										if not pinv:is_empty(list_name) then
+											pinv:set_list(list_name,{})
+										end
+									end
+									clothing:update_temp(pobj)
+								end
+								pobj:set_hp(0,{_mcl_type = "out_of_world"})
+							end
+						end})
+					end
+					if privs.server then
+						table.insert(boxelem,gui.Button { name = "tab_hp", label = S("Manage"), on_event = btn_event("hp")})
+					end
+					table.insert(elems,gui.HBox(boxelem))
+				end
 				if privs.kick and privs.ban and pobj then -- Bans
 					table.insert(elems,gui.HBox {
 						gui.Button { name = "tab_kick", label = S("Kick"), on_event = btn_event("kick"), expand = true, align_h = "right"},
@@ -195,6 +236,19 @@ local my_gui = flow.make_gui(function(player, ctx)
 						gui.Button { name = "tab_ban", label = S("Ban"), on_event = btn_event("ban"), expand = true, align_h = "right" },
 						gui.Button { name = "tab_unban", label = S("Unban"), on_event = btn_event("unban")},
 					})
+				end
+				if rawget(_G,"ctf_teams") then -- CTF
+					local pteam = ctf_teams.get(ctx.player)
+					local teamstr = "N/A"
+					if pteam then
+						teamstr = minetest.colorize(ctf_teams.team[pteam].color,pteam:gsub("^%l", string.upper))
+					end
+					local boxelem = {}
+					table.insert(boxelem,gui.Label { label = S("CTF Team: @1",teamstr) })
+					if privs.ctf_team_admin then
+						table.insert(boxelem,gui.Button { name = "tab_ctf_teams", label = S("Manage"), on_event = btn_event("ctf_teams"), expand = true, align_h = "right" })
+					end
+					table.insert(elems,gui.HBox(boxelem))
 				end
 				elems.min_w = 7
 				right = gui.VBox(elems)
@@ -220,7 +274,11 @@ local my_gui = flow.make_gui(function(player, ctx)
 				gui.VBox {
 					right,
 					gui.HBox {
-						gui.Label { label = S("Copyright (c) 2022 Emoji"), expand = true, align_h = "right" },
+						gui.Label { label = S("Copyright (c) 2022 Emoji") },
+						gui.Button { label = S("Rebuild\nPlayer List"), expand = true, align_h = "right", on_event = function(player,ctx)
+							ctx.rebuild_player = true
+							return true
+						end},
 						gui.Button_exit { label = S("Exit") },
 						expand = true,
 						align_v = "bottom"
@@ -482,7 +540,7 @@ local my_gui = flow.make_gui(function(player, ctx)
 			gui.Label { label = S("Do you really want to delete @1?",ctx.player), h = 1.5 },
 			gui.HBox {
 				gui.Button { name = "tab_main", label = S("Discard"), on_event = btn_event("main") , expand = true, align_h = "right" },
-				gui.Button { name = "ban_qpply", label = S("Apply"), on_event = function(player,ctx)
+				gui.Button { name = "ban_apply", label = S("Apply"), on_event = function(player,ctx)
 					if not minetest.check_player_privs(player,{server=true}) then
 						return NA
 					end
@@ -491,6 +549,88 @@ local my_gui = flow.make_gui(function(player, ctx)
 					minetest.disconnect_player(ctx.player,"The server admin deleted your account.")
 					minetest.remove_player(ctx.player)
 					minetest.remove_player_auth(ctx.player)
+					ctx.tab = "main"
+					return true
+				end },
+			}
+		}
+	elseif ctx.tab == "ctf_teams" and rawget(_G,"ctf_teams") then
+		if not minetest.check_player_privs(player,{ctf_team_admin=true}) then
+			return NA
+		elseif not ctx.player then
+			return bug(S("No player selected."))
+		end
+		ctx.ctf_team = ctx.ctf_team or {}
+		if not ctx.ctf_team.teams_list then
+			ctx.ctf_team.teams_list = table.copy(ctf_teams.current_team_list)
+		end
+		local curr_team = ctf_teams.get(ctx.player)
+		local curr_team_idx = table.indexof(ctf_teams.current_team_list, curr_team)
+		return gui.VBox {
+			gui.Label { label = S("Player Management System: CTF Teams -> @1",ctx.player) },
+			gui.HBox {
+				gui.Label { label = S("Assign a team:")},
+				gui.Dropdown {
+					name = "ctf_teams_select",
+					items = ctx.ctf_team.teams_list,
+					index_event = true,
+					selected_idx = curr_team_idx
+				}
+			},
+			gui.HBox {
+				gui.Button { name = "tab_main", label = S("Discard"), on_event = btn_event("main") , expand = true, align_h = "right" },
+				gui.Button { name = "ctf_teams_apply", label = S("Apply"), on_event = function(player,ctx)
+					if not minetest.check_player_privs(player,{ctf_team_admin=true}) then
+						return NA
+					end
+					local form = ctx.form
+					if not form.ctf_teams_select then
+						ctx.popup = S("Invalid Team!")
+						return true
+					end
+					local team = ctx.ctf_team.teams_list[form.ctf_teams_select]
+					if table.indexof(ctf_teams.current_team_list, team) == -1 then
+						ctx.popup = S("Invalid Team!")
+						ctx.ctf_team.teams_list = nil
+						return true
+					end
+					ctf_teams.set(ctx.player, team)
+					ctx.tab = "main"
+					return true
+				end },
+			}
+		}
+	elseif ctx.tab == "hp" then
+		if not minetest.check_player_privs(player,{server=true}) then
+			return NA
+		end
+		local pobj = ctx.player and minetest.get_player_by_name(ctx.player)
+		if not pobj then
+			return bug(S("No player selected."))
+		end
+
+		return gui.VBox {
+			gui.Label { label = S("Player Management System: Set HP -> @1",ctx.player) },
+			gui.HBox {
+				gui.Label { label = S("Set HP:")},
+				gui.Field { name = "hp_sethp", default = "" .. pobj:get_hp() }
+			},
+			gui.HBox {
+				gui.Button { name = "tab_main", label = S("Discard"), on_event = btn_event("main") , expand = true, align_h = "right" },
+				gui.Button { name = "hp_apply", label = S("Apply"), on_event = function(player,ctx)
+					if not minetest.check_player_privs(player,{server=true}) then
+						return NA
+					end
+					local form = ctx.form
+					local set_hp = tonumber(form.hp_sethp)
+					if not set_hp then
+						ctx.popup = S("Invalid HP!")
+						return true
+					end
+					local pobj = minetest.get_player_by_name(ctx.player)
+					if pobj then
+						pobj:set_hp(set_hp,{_mcl_type = "out_of_world"})
+					end
 					ctx.tab = "main"
 					return true
 				end },
