@@ -276,13 +276,17 @@ local my_gui = flow.make_gui(function(player, ctx)
 				ctx.rebuild_player = true
 				return true
 			end})
-			table.insert(rb,gui.Button_exit { label = S("Exit") })
-		else
+			if not ctx.inside_sway then
+				table.insert(rb,gui.Button_exit { label = S("Exit") })
+			end
+		elseif not ctx.inside_sway then
 			table.insert(rb,gui.Button_exit { label = S("Exit"), expand = true, align_h = "right" })
+		else
+			table.insert(rb,gui.Spacer{})
 		end
 		rb.expand = true
 		rb.align_v = "bottom"
-		lb = {}
+		local lb = {}
 		if privs.server then
 			table.insert(lb,gui.Button { name = "tab_newplayer", label = "+", on_event = btn_event("newplayer"), w = 0.7, h = 0.7 })
 			table.insert(lb,gui.Button { name = "tab_delplayer", label = "-", on_event = btn_event("delplayer"), w = 0.7, h = 0.7 })
@@ -679,6 +683,9 @@ if minetest.global_exists("sway") then
 	sway.register_page(modname..":gui", {
 		title = S("User Manager"),
 		get = function (self, player, ctx)
+			if not ctx[modname] then
+				ctx[modname] = { inside_sway = true }
+			end
 			return sway.Form {
 				my_gui:embed {
 					player = player,
