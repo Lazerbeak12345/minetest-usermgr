@@ -673,3 +673,48 @@ minetest.register_chatcommand("usermgr",{
 		return true
 	end
 })
+
+if minetest.global_exists("sway") then
+	local modname = "usermgr"
+	sway.register_page(modname..":gui", {
+		title = S("User Manager"),
+		get = function (self, player, ctx)
+			return sway.Form {
+				my_gui:embed {
+					player = player,
+					name = modname,
+				}
+			}
+		end
+		-- Each tab has its own privilege setting, so we don't need an is_in_nav.
+		-- Players have a decent fallback if without any privelages
+	})
+	local function on_priv_change(player_name, _, priv)
+		if not sway.enabled then
+			return
+		end
+
+		-- If the priv isn't one of these, return
+		if priv ~= "server"
+		or priv ~= "privs"
+		or priv ~= "ban"
+		or priv ~= "kick"
+		or priv ~= "ctf_team_admin"
+		then
+			return
+		end
+
+		local player = minetest.get_player_by_name(player_name)
+		if not player then
+			return
+		end
+
+		if sway.get_page(player) ~= modname..":gui" then
+			return
+		end
+
+		sway.set_player_inventory_formspec(player)
+	end
+	minetest.register_on_priv_grant(on_priv_change)
+	minetest.register_on_priv_revoke(on_priv_change)
+end
